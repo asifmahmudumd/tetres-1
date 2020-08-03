@@ -6,10 +6,13 @@ systemconfig.py
 this module handles the request from `system configuration tab` of `admin client`
 
 """
+from pyticas_tetres.da.route_wise_moe_parameters import RouteWiseMOEParametersDataAccess
+from pyticas_tetres.systasks.initial_data_maker import update_moe_values
+
 __author__ = 'Chongmyung Park (chongmyung.park@gmail.com)'
 
 import datetime
-
+import threading
 from flask import request
 
 from pyticas.tool import json
@@ -22,7 +25,7 @@ from pyticas_tetres.db.tetres.model import Config
 from pyticas_tetres.logger import getLogger
 from pyticas_tetres.sched import scheduler, worker
 from pyticas_tetres.systasks import actionlog_processor as actionlog_proc
-from pyticas_tetres.ttypes import SystemConfigInfo
+from pyticas_tetres.ttypes import SystemConfigInfo, RouteWiseMOEParametersInfo
 from pyticas_tetres.util import actionlog, systemconfig
 
 
@@ -56,8 +59,47 @@ def register_api(app):
             return prot.response_fail('fail to update configuration')
 
         put_task_to_actionlog(prev_syscfg)
-
+        t1 = threading.Thread(target=handle_route_wise_moe_parameters, args=(cfginfo_json,))
+        t1.start()
         return prot.response_success()
+
+
+def handle_route_wise_moe_parameters(config_json_string):
+    import json
+    config_json = json.loads(config_json_string)
+    route_id = config_json.get("reference_tt_route_id")
+    if route_id:
+        rw_moe_critical_density = config_json.get("rw_moe_critical_density")
+        rw_moe_lane_capacity = config_json.get("rw_moe_lane_capacity")
+        rw_moe_congestion_threshold_speed = config_json.get("rw_moe_congestion_threshold_speed")
+        rw_moe_start_date = config_json.get("rw_moe_start_date")
+        rw_moe_end_date = config_json.get("rw_moe_end_date")
+        rw_moe_param_info = create_rw_moe_param_object(route_id, rw_moe_critical_density, rw_moe_lane_capacity,
+                                                       rw_moe_congestion_threshold_speed, rw_moe_start_date,
+                                                       rw_moe_end_date)
+
+        save_rw_param_object(rw_moe_param_info)
+        update_moe_values(config_json)
+
+
+def create_rw_moe_param_object(route_id, rw_moe_critical_density, rw_moe_lane_capacity,
+                               rw_moe_congestion_threshold_speed, rw_moe_start_date, rw_moe_end_date):
+    rw_moe_param_info = RouteWiseMOEParametersInfo()
+    rw_moe_param_info.reference_tt_route_id = route_id
+    rw_moe_param_info.moe_critical_density = rw_moe_critical_density
+    rw_moe_param_info.moe_lane_capacity = rw_moe_lane_capacity
+    rw_moe_param_info.moe_congestion_threshold_speed = rw_moe_congestion_threshold_speed
+    rw_moe_param_info.start_time = rw_moe_start_date if rw_moe_start_date else None
+    rw_moe_param_info.end_time = rw_moe_end_date if rw_moe_end_date else None
+    return rw_moe_param_info
+
+
+def save_rw_param_object(rw_moe_param_info):
+    rw_moe_param_info.update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    rw_da = RouteWiseMOEParametersDataAccess()
+    rw_da.insert(rw_moe_param_info)
+    rw_da.commit()
+    rw_da.close_session()
 
 
 def put_task_to_actionlog(prev_syscfg):
