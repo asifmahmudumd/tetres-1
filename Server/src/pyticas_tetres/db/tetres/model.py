@@ -282,6 +282,8 @@ class ActionLog(Base):
     reason = Column(VARCHAR(255), nullable=True)
     user_ip = Column(VARCHAR(15), nullable=True)
     reg_date = Column(DateTime, nullable=False, default=datetime.datetime.now)
+    processed_start_date = Column(DateTime, nullable=True)
+    processed_end_date = Column(DateTime, nullable=True)
 
     def __repr__(self):
         return ('<ActionLog id="%s" action_type="%s" target_datatype="%s" target_table="%s" target_id="%s" '
@@ -318,7 +320,7 @@ class TravelTime(object):
     cm = Column(Float, nullable=True)
     cmh = Column(Float, nullable=True)
     acceleration = Column(Float, nullable=True)
-    meta_data = Column(UnicodeText, nullable=False)
+    meta_data = Column(UnicodeText, nullable=True)
 
     inc_severity = Column(Integer, nullable=True)
     inc_impact = Column(Integer, nullable=True)
