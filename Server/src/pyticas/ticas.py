@@ -37,6 +37,9 @@ class TICASObj(object):
         tetres_filters_directory = os.path.join(self.data_path, "tetres", "filters")
         if not os.path.exists(tetres_filters_directory):
             os.makedirs(tetres_filters_directory)
+        tetres_route_groups_directory = os.path.join(self.data_path, "tetres", "route-groups")
+        if not os.path.exists(tetres_route_groups_directory):
+            os.makedirs(tetres_route_groups_directory)
         if cfg_profile:
             if not hasattr(cfg_profile, 'setup') or not callable(getattr(cfg_profile, 'setup')):
                 raise Exception('cfg_profile must have callable "setup()" function')
